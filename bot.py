@@ -46,7 +46,7 @@ class TimestampBot(discord.Client):
                 guild=True, dm_channel=True, private_channel=True
             ),
             allowed_installs=app_commands.AppInstallationType(
-                guilds=True, users=True
+                guild=True, user=True
             ),
         )
 
