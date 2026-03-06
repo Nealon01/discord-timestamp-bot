@@ -245,6 +245,42 @@ class TimezonePickerView(discord.ui.View):
         self.add_item(TimezoneSelect(timezones))
 
 
+# --- Mobile-friendly copy views ---
+
+class CopyFormatSelect(discord.ui.Select):
+    """Dropdown for 'All Formats' — pick one to get a clean copyable message."""
+    def __init__(self, unix_ts: int):
+        self.unix_ts = unix_ts
+        options = [
+            discord.SelectOption(label=desc, value=code, description=f"<t:{unix_ts}:{code}>")
+            for code, desc, _ in FORMATS
+        ]
+        super().__init__(placeholder="Pick a format to copy...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        code = self.values[0]
+        syntax = f"<t:{self.unix_ts}:{code}>"
+        await interaction.response.send_message(syntax, ephemeral=True)
+
+
+class CopyFormatView(discord.ui.View):
+    """View with format dropdown for mobile copy."""
+    def __init__(self, unix_ts: int):
+        super().__init__(timeout=120)
+        self.add_item(CopyFormatSelect(unix_ts))
+
+
+class CopyButton(discord.ui.View):
+    """Single copy button that sends just the syntax."""
+    def __init__(self, syntax: str):
+        super().__init__(timeout=120)
+        self.syntax = syntax
+
+    @discord.ui.button(label="Copy", style=discord.ButtonStyle.secondary, emoji="\U0001f4cb")
+    async def copy(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(self.syntax, ephemeral=True)
+
+
 # --- /timezone command ---
 
 @bot.tree.command(name="timezone", description="Set your timezone (type a name like 'Eastern' or your current time like '3:30pm')")
@@ -403,7 +439,7 @@ async def timestamp_command(
         body = "\n".join(blocks)
         if not user_tz:
             body += "\n*Tip: Set your timezone with `/timezone` for accurate local times.*"
-        await interaction.followup.send(body, ephemeral=True)
+        await interaction.followup.send(body, view=CopyFormatView(unix_ts), ephemeral=True)
     else:
         code = format.value
         fmt = next((f for c, _, f in FORMATS if c == code), None)
@@ -411,6 +447,7 @@ async def timestamp_command(
         syntax = f"<t:{unix_ts}:{code}>"
         await interaction.followup.send(
             f"**{preview}{tz_note}**\n```\n{syntax}\n```",
+            view=CopyButton(syntax),
             ephemeral=True,
         )
 
