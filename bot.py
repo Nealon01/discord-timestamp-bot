@@ -51,6 +51,8 @@ bot = TimestampBot()
 
 
 @bot.tree.command(name="timestamp", description="Generate a Discord timestamp from natural language")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(
     time="Date/time in plain English (e.g. 'sunday at noon', 'in 2 hours', 'march 15 8pm')",
     format="Timestamp display format",
