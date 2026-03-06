@@ -2,7 +2,7 @@ import os
 import re
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo, available_timezones
 
@@ -386,6 +386,10 @@ async def timestamp_command(
     # already gives us the upcoming occurrence of any day name.
     cleaned = re.sub(r"\bnext\b\s*", "", time, flags=re.IGNORECASE).strip()
 
+    # Normalize bare numbers after "at": "at 6" → "at 6:00"
+    # (dateparser doesn't recognize a bare digit as a time)
+    cleaned = re.sub(r'(?<=\bat\s)(\d{1,2})(?!\s*[:]\s*\d|am|pm|\d)', r'\1:00', cleaned, flags=re.IGNORECASE)
+
     # Use the user's saved timezone if set
     user_tz = get_user_tz(str(interaction.user.id))
     parser_settings = {
@@ -404,8 +408,16 @@ async def timestamp_command(
         )
         return
 
-    unix_ts = int(parsed.timestamp())
+    # Smart PM inference: if result is in the past, user didn't say AM/PM,
+    # and adding 12h makes it future — assume they meant PM.
     now = datetime.now(parsed.tzinfo) if parsed.tzinfo else datetime.now()
+    has_ampm = bool(re.search(r'(am|pm)', time, re.IGNORECASE))
+    if not has_ampm and parsed < now:
+        adjusted = parsed + timedelta(hours=12)
+        if adjusted > now:
+            parsed = adjusted
+
+    unix_ts = int(parsed.timestamp())
     delta = parsed - now
 
     def format_preview(code, fmt):
