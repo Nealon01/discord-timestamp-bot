@@ -40,7 +40,15 @@ class TimestampBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
+        self.tree = app_commands.CommandTree(
+            self,
+            allowed_contexts=app_commands.AppCommandContext(
+                guild=True, dm_channel=True, private_channel=True
+            ),
+            allowed_installs=app_commands.AppInstallationType(
+                guilds=True, users=True
+            ),
+        )
 
     async def setup_hook(self):
         await self.tree.sync()
