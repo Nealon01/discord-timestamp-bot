@@ -54,6 +54,22 @@ class TimestampBot(discord.Client):
         await self.tree.sync()
         log.info("Slash commands synced.")
 
+        # Workaround: discord.py doesn't send 'contexts' during sync,
+        # so patch each global command to enable DMs and private channels.
+        commands = await self.http.get_global_commands(self.application_id)
+        for cmd in commands:
+            if cmd.get("contexts") != [0, 1, 2]:
+                await self.http.request(
+                    discord.http.Route(
+                        "PATCH",
+                        "/applications/{app_id}/commands/{cmd_id}",
+                        app_id=self.application_id,
+                        cmd_id=cmd["id"],
+                    ),
+                    json={"contexts": [0, 1, 2]},
+                )
+        log.info("Command contexts patched for DM support.")
+
 
 bot = TimestampBot()
 
